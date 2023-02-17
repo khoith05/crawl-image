@@ -16,15 +16,15 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 number_of_images = 200
-SKIP_RESULT = 313
+SKIP_RESULT = 1000
 GET_IMAGE_TIMEOUT = 2
 SLEEP_BETWEEN_INTERACTIONS = 3
-SLEEP_BEFORE_MORE = 30
+SLEEP_BEFORE_MORE = 10
 IMAGE_QUALITY = 85
 DRIVER_PATH="./chromedriver.exe"
 output_path = "./image"
 
-search_terms = ["yoga one person poses"]
+search_terms = ["yoga one person poses downdog"]
 
 dirs = glob(output_path + "*")
 dirs = [dir.split("/")[-1].replace("_", " ") for dir in dirs]
@@ -45,6 +45,10 @@ class timeout:
 
   def __exit__(self, type, value, traceback):
     signal.alarm(0)
+
+def updatable_print(string):
+    print(string, end='\r')
+    print('', end='', flush=True)
 
 def document_initialised(driver):
     return driver.execute_script("return initialised")
@@ -70,6 +74,7 @@ def fetch_image_urls(
   image_count = 0
   results_start = 0
   while image_count < max_links_to_fetch:
+    time.sleep(sleep_between_interactions)
     scroll_to_end(wd)
 
     # Get all image thumbnail results
@@ -79,13 +84,17 @@ def fetch_image_urls(
     print(
       f"Found: {number_results} search results. Extracting links from {results_start}:{number_results}"
     )
+    if results_start >= number_results:
+      print("Something went wrong, stop.")
+      return image_urls
+
     if(results_start < SKIP_RESULT):
       results_start = len(thumbnail_results)
       print("skip")
-      continue
 
     # Loop through image thumbnail identified
-    for img in thumbnail_results[results_start:number_results]:
+    for n, img in enumerate(thumbnail_results[results_start:number_results]):
+      updatable_print(f'Extract {n+results_start}/{number_results} results')
       # Try to click every thumbnail such that we can get the real image behind it.
       try:
         img.click()
@@ -99,30 +108,28 @@ def fetch_image_urls(
         #   EC.text_to_be_present_in_element_attribute((By.CSS_SELECTOR, "img.n3VNCb"),"src","http")
         #   ))
       except:
-        print("Image Time out")
+        pass
 
       # Extract image urls
 
       actual_images = wd.find_elements(By.CSS_SELECTOR,"img.n3VNCb")
-      print("images len ",len(actual_images))
       
       for actual_image in actual_images:
         image_src = actual_image.get_attribute("src")
         if image_src and "http" in image_src and "encrypted-tbn0.gstatic.com" not in image_src:
-          print('actual_image.get_attribute("src")',image_src)
           image_urls.add(image_src)
 
-      image_count = len(image_urls)
+    image_count = len(image_urls)
 
-      # If the number images found exceeds our `num_of_images`, end the seaerch.
-      if len(image_urls) >= max_links_to_fetch:
-        print(f"Found: {len(image_urls)} image links, done!")
-        break
+    # If the number images found exceeds our `num_of_images`, end the seaerch.
+    if image_count >= max_links_to_fetch:
+      print(f"Found: {len(image_urls)} image links, done!")
+      break
     else:
       # If we haven't found all the images we want, let's look for more.
       print("Found:", len(image_urls), "image links, looking for more ...")
       time.sleep(SLEEP_BEFORE_MORE)
-
+      scroll_to_end(wd)
       # Check for button signifying no more images.
       not_what_you_want_button = ""
       try:
@@ -139,6 +146,7 @@ def fetch_image_urls(
       load_more_button = wd.find_element(By.CSS_SELECTOR,".mye4qd")
       if load_more_button and not not_what_you_want_button:
         wd.execute_script("document.querySelector('.mye4qd').click();")
+        time.sleep(SLEEP_BEFORE_MORE)
 
     # Move the result startpoint further down.
     results_start = len(thumbnail_results)
