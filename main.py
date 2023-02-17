@@ -16,7 +16,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 number_of_images = 200
-SKIP_RESULT = 1000
+SKIP_RESULT = -1
 GET_IMAGE_TIMEOUT = 2
 SLEEP_BETWEEN_INTERACTIONS = 3
 SLEEP_BEFORE_MORE = 10
